@@ -126,3 +126,5 @@ D:\My Programming\.Net Core\PlatformService\obj\Debug\net6.0\refint\PlatformServ
 D:\My Programming\.Net Core\PlatformService\obj\Debug\net6.0\PlatformService.pdb
 D:\My Programming\.Net Core\PlatformService\obj\Debug\net6.0\PlatformService.genruntimeconfig.cache
 D:\My Programming\.Net Core\PlatformService\obj\Debug\net6.0\ref\PlatformService.dll
+D:\My Programming\.Net Core\PlatformService\bin\Debug\net6.0\appsettings.Production.json
+D:\My Programming\.Net Core\PlatformService\bin\Debug\net6.0\RabbitMQ.Client.dll

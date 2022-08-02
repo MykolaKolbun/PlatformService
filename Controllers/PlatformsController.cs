@@ -1,8 +1,10 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
+using PlatformService.AsyncDataServices;
 using PlatformService.Data;
 using PlatformService.Dtos;
 using PlatformService.Models;
+using PlatformService.SyncDataServices.Http;
 
 namespace PlatformService.Controllers
 {
@@ -12,11 +14,15 @@ namespace PlatformService.Controllers
     {
         private readonly IPlatformRepo _reposotory;
         private readonly IMapper _mapper;
+        private readonly ICommandDataClient _commandDataClient;
+        private readonly IMessageBusClient _messageBusClient;
 
-        public PlatformsController(IPlatformRepo repositry, IMapper mapper)
+        public PlatformsController(IPlatformRepo repositry, IMapper mapper, ICommandDataClient commandDataClient, IMessageBusClient messageBusClient)
         {
             _reposotory = repositry;
             _mapper = mapper;
+            _commandDataClient = commandDataClient;
+            _messageBusClient = messageBusClient;
         }
 
         [HttpGet]
@@ -41,15 +47,34 @@ namespace PlatformService.Controllers
             return NotFound();
         }
         [HttpPost]
-        public ActionResult<PlatformReadDto> CreatePlatform(PlatformCreateDto platformCreateDto)
+        public async Task<ActionResult<PlatformReadDto>> CreatePlatform(PlatformCreateDto platformCreateDto)
         {
             var platformModel = _mapper.Map<Platform>(platformCreateDto);
             _reposotory.CreatePlatform(platformModel);
             _reposotory.SaveCanges();
 
-            var platformReadDot = _mapper.Map<PlatformReadDto>(platformModel);
+            var platformReadDto = _mapper.Map<PlatformReadDto>(platformModel);
 
-            return CreatedAtRoute(nameof(GetPlatformById), new {Id = platformReadDot.Id}, platformReadDot);
+            try
+            {
+                await _commandDataClient.SendPlatformToCommand(platformReadDto);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"--> Could NOT send synchronously: {ex.Message}");
+            }
+
+            try
+            {
+                var platformPublishedDto = _mapper.Map<PlatformPublishedDto>(platformReadDto);
+                platformPublishedDto.Event = "Platform_Published";
+                _messageBusClient.PublishNewPlatform(platformPublishedDto);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"--> Could not send asynchronously: {ex.Message}");
+            }
+            return CreatedAtRoute(nameof(GetPlatformById), new {Id = platformReadDto.Id}, platformReadDto);
         }
     }
 }
